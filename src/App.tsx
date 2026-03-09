@@ -24,6 +24,13 @@ interface TimelineStep {
   status: StepStatus;
 }
 
+interface RpcLog {
+  timestamp: string;
+  method: string;
+  params: any;
+  type: 'req' | 'res';
+}
+
 interface Balances {
   USDC: number;
   AVAX: number;
@@ -122,6 +129,7 @@ export default function App() {
 
 function PortalView({ onAppClick }: { onAppClick: (name: string) => void }) {
   const [category, setCategory] = useState<Category>('All');
+  const [toast, setToast] = useState<string | null>(null);
 
   const apps = [
     { name: 'Dexalot', category: 'Dex', icon: <Coins className="text-amber-400" />, description: 'Central Limit Order Book DEX on Avalanche Subnet.' },
@@ -134,8 +142,23 @@ function PortalView({ onAppClick }: { onAppClick: (name: string) => void }) {
 
   const filteredApps = category === 'All' ? apps : apps.filter(app => app.category === category);
 
+  const handleAppClick = (appName: string) => {
+    if (appName === 'Dexalot') {
+      onAppClick(appName);
+    } else {
+      setToast(`${appName} integration is coming soon!`);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 relative">
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1E293B] border border-white/10 text-white px-6 py-3 rounded-full shadow-xl shadow-black/50 z-50 animate-in fade-in slide-in-from-top-4 flex items-center gap-2">
+          <AlertCircle size={18} className="text-amber-400" />
+          {toast}
+        </div>
+      )}
       <div className="text-center space-y-4 py-8">
         <h2 className="text-4xl font-bold text-white">Unified Gas Payment for Avalanche Subnets</h2>
         <p className="text-slate-400 max-w-2xl mx-auto">
@@ -165,7 +188,7 @@ function PortalView({ onAppClick }: { onAppClick: (name: string) => void }) {
         {filteredApps.map((app) => (
           <div 
             key={app.name}
-            onClick={() => onAppClick(app.name)}
+            onClick={() => handleAppClick(app.name)}
             className="bg-[#1E293B]/50 border border-white/5 rounded-2xl p-6 hover:border-[#E84142]/50 hover:bg-[#1E293B] transition-all cursor-pointer group backdrop-blur-sm"
           >
             <div className="flex items-start justify-between mb-4">
@@ -207,6 +230,24 @@ function SwapView({ account, balances, setBalances, connectWallet, onBack, isDem
     { id: 6, label: 'Swap executed', status: 'idle' },
   ]);
 
+  const [logs, setLogs] = useState<RpcLog[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
+  const addLog = (method: string, params: any, type: 'req' | 'res' = 'req') => {
+    setLogs(prev => [...prev, {
+      timestamp: new Date().toISOString().split('T')[1].slice(0, -1),
+      method,
+      params,
+      type
+    }]);
+  };
+
   const handleSwap = async () => {
     if (!account) return;
     const swapAmount = parseFloat(amount);
@@ -223,6 +264,7 @@ function SwapView({ account, balances, setBalances, connectWallet, onBack, isDem
     setError(null);
     setIsProcessing(true);
     setTxHash(null);
+    setLogs([]);
     setSteps(prev => prev.map(s => ({ ...s, status: 'idle' })));
 
     try {
@@ -233,6 +275,7 @@ function SwapView({ account, balances, setBalances, connectWallet, onBack, isDem
 
       // Step 1: Sign Intent
       updateStep(1, 'loading');
+      addLog('eth_signTypedData_v4', { message: { from: "USDC", to: "AVAX", amount: swapAmount } }, 'req');
       if (!isDemoWallet && window.ethereum) {
         try {
           const provider = new ethers.BrowserProvider(window.ethereum);
@@ -250,14 +293,43 @@ function SwapView({ account, balances, setBalances, connectWallet, onBack, isDem
       } else {
         await delay(1000);
       }
+      addLog('eth_signTypedData_v4', { result: "0x" + Array.from({length: 130}, () => Math.floor(Math.random() * 16).toString(16)).join('') }, 'res');
       updateStep(1, 'success');
 
-      // Steps 2-6
-      for (let i = 2; i <= 6; i++) {
-        updateStep(i, 'loading');
-        await delay(1000);
-        updateStep(i, 'success');
-      }
+      // Step 2: Submit to Gas Station
+      updateStep(2, 'loading');
+      addLog('gasStation_submitIntent', { intent: "0x..." }, 'req');
+      await delay(1000);
+      addLog('gasStation_submitIntent', { status: "accepted", taskId: "0x999" }, 'res');
+      updateStep(2, 'success');
+
+      // Step 3: Relayer converting
+      updateStep(3, 'loading');
+      addLog('relayer_convertFee', { token: "USDC", amount: 0.1 }, 'req');
+      await delay(1000);
+      addLog('relayer_convertFee', { status: "converted", received: "0.02 ALOT" }, 'res');
+      updateStep(3, 'success');
+
+      // Step 4: Relayer paying gas
+      updateStep(4, 'loading');
+      addLog('eth_sendTransaction', { to: "0xGasContract", value: "0.02 ALOT" }, 'req');
+      await delay(1000);
+      addLog('eth_sendTransaction', { txHash: "0xdef456..." }, 'res');
+      updateStep(4, 'success');
+
+      // Step 5: Submitting tx
+      updateStep(5, 'loading');
+      addLog('eth_sendRawTransaction', { data: "0xSwapData..." }, 'req');
+      await delay(1000);
+      addLog('eth_sendRawTransaction', { txHash: "0x789..." }, 'res');
+      updateStep(5, 'success');
+
+      // Step 6: Executed
+      updateStep(6, 'loading');
+      addLog('eth_getTransactionReceipt', { hash: "0x789..." }, 'req');
+      await delay(1000);
+      addLog('eth_getTransactionReceipt', { status: "0x1" }, 'res');
+      updateStep(6, 'success');
 
       const newTxHash = "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
       setTxHash(newTxHash);
@@ -481,6 +553,36 @@ function SwapView({ account, balances, setBalances, connectWallet, onBack, isDem
             </div>
           )}
 
+        </div>
+      </div>
+
+      {/* RPC Logs - Fixed Bottom Right */}
+      <div className="fixed bottom-6 right-6 w-96 bg-[#0F172A]/95 backdrop-blur-md border border-white/10 rounded-2xl p-4 font-mono text-xs h-72 flex flex-col shadow-2xl shadow-black/50 z-50 animate-in slide-in-from-bottom-8 duration-500">
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/5">
+          <span className="text-slate-400 font-sans font-semibold">JSON-RPC Terminal</span>
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50"></div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+          {logs.length === 0 ? (
+            <div className="text-slate-600 italic">Waiting for transaction...</div>
+          ) : (
+            logs.map((log, i) => (
+              <div key={i} className="break-all animate-in fade-in duration-300">
+                <span className="text-slate-500">[{log.timestamp}] </span>
+                <span className={log.type === 'req' ? 'text-blue-400' : 'text-emerald-400'}>
+                  {log.type === 'req' ? '→' : '←'} {log.method}
+                </span>
+                <div className="pl-4 text-slate-400 mt-0.5">
+                  {JSON.stringify(log.params)}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={logsEndRef} />
         </div>
       </div>
     </div>
