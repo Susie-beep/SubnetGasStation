@@ -15,7 +15,7 @@ declare global {
 }
 
 type StepStatus = 'idle' | 'loading' | 'success';
-type View = 'portal' | 'swap';
+type View = 'landing' | 'portal' | 'swap';
 type Category = 'All' | 'Dex' | 'GameFi' | 'NFT';
 
 interface TimelineStep {
@@ -46,7 +46,7 @@ interface AppCardProps {
 }
 
 export default function App() {
-  const [view, setView] = useState<View>('portal');
+  const [view, setView] = useState<View>('landing');
   const [account, setAccount] = useState<string | null>(null);
   const [isDemoWallet, setIsDemoWallet] = useState(false);
   const [balances, setBalances] = useState<Balances>({ USDC: 100, AVAX: 0, ALOT: 0 });
@@ -108,7 +108,9 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        {view === 'portal' ? (
+        {view === 'landing' ? (
+          <LandingView onLaunch={() => setView('portal')} />
+        ) : view === 'portal' ? (
           <PortalView onAppClick={(appName) => {
             if (appName === 'Dexalot') setView('swap');
           }} />
@@ -123,6 +125,178 @@ export default function App() {
           />
         )}
       </main>
+    </div>
+  );
+}
+
+function LandingView({ onLaunch }: { onLaunch: () => void }) {
+  return (
+    <div className="space-y-24 py-12 animate-in fade-in duration-500">
+      {/* Hero Section */}
+      <section className="text-center space-y-8 max-w-4xl mx-auto">
+        <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight">
+          Gas Abstraction Infrastructure <br className="hidden md:block" />
+          <span className="text-[#E84142]">for Avalanche Subnets</span>
+        </h1>
+        <p className="text-xl text-slate-300 font-medium">
+          Interact with subnet applications using a single asset — no native gas tokens required.
+        </p>
+        <div className="text-slate-400 max-w-2xl mx-auto space-y-2 text-lg">
+          <p>Subnet Gas Station provides a <strong className="text-white">gas abstraction layer for Avalanche Subnets</strong> using an intent-based execution model.</p>
+          <p>The system allows users to interact with subnet applications without acquiring the subnet’s native gas token.</p>
+          <div className="pt-4 flex flex-col items-center text-sm">
+            <p className="text-slate-500 mb-2 uppercase tracking-widest font-semibold">The project includes:</p>
+            <ul className="flex flex-wrap justify-center gap-4 text-slate-300">
+              <li className="bg-white/5 px-3 py-1 rounded-full border border-white/10">• Gas abstraction protocol</li>
+              <li className="bg-white/5 px-3 py-1 rounded-full border border-white/10">• Relayer execution network</li>
+              <li className="bg-white/5 px-3 py-1 rounded-full border border-white/10">• Developer integration SDK</li>
+              <li className="bg-white/5 px-3 py-1 rounded-full border border-white/10">• A unified application portal demo</li>
+            </ul>
+          </div>
+        </div>
+        <div className="flex justify-center gap-4 pt-8">
+          <button onClick={onLaunch} className="bg-[#E84142] hover:bg-[#D13031] text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-red-900/20">
+            Launch Demo
+          </button>
+          <a href="#architecture" className="bg-[#1E293B] hover:bg-[#2D3B55] text-white px-8 py-3 rounded-xl font-bold transition-all border border-white/10">
+            View Architecture
+          </a>
+        </div>
+      </section>
+
+      {/* Problem Section */}
+      <section className="max-w-4xl mx-auto bg-[#1E293B]/30 border border-white/5 rounded-3xl p-8 md:p-12">
+        <h2 className="text-3xl font-bold text-white mb-6">The Gas Fragmentation Problem</h2>
+        <div className="space-y-4 text-slate-300 text-lg leading-relaxed">
+          <p>Within the Avalanche ecosystem, each subnet can define its own gas token.</p>
+          <p>While this design enables flexibility and customization, it introduces significant onboarding friction.</p>
+          <p>Users who want to interact with a subnet application must first:</p>
+          <ul className="list-disc pl-6 space-y-2 text-slate-400">
+            <li>bridge assets to the subnet</li>
+            <li>acquire the subnet’s gas token</li>
+            <li>execute their first transaction</li>
+          </ul>
+          <p className="pt-2 text-amber-400/90 font-medium">For new users exploring the ecosystem, this process creates unnecessary complexity.</p>
+        </div>
+      </section>
+
+      {/* Solution Section */}
+      <section className="max-w-4xl mx-auto bg-gradient-to-br from-[#E84142]/10 to-[#1E293B]/50 border border-[#E84142]/20 rounded-3xl p-8 md:p-12">
+        <h2 className="text-3xl font-bold text-white mb-6">Subnet Gas Station</h2>
+        <div className="space-y-4 text-slate-300 text-lg leading-relaxed">
+          <p>Subnet Gas Station introduces a <strong className="text-white">gas abstraction infrastructure layer</strong> that removes the need for users to manage multiple subnet gas tokens.</p>
+          <p>Users sign a transaction intent using a common asset such as USDC.</p>
+          <p>A relayer network then executes the transaction on the target subnet and pays the required gas on behalf of the user.</p>
+          <p className="pt-2 text-emerald-400/90 font-medium">This allows applications to onboard users without requiring them to manage subnet-specific tokens.</p>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="max-w-5xl mx-auto">
+        <h2 className="text-3xl font-bold text-center text-white mb-12">How It Works</h2>
+        <div className="grid md:grid-cols-5 gap-4">
+          {[
+            { step: 1, title: "User Signs Intent", desc: "Users interact with an application through the portal and sign an intent describing the action they want to perform. Example: Swap 10 USDC for ALOT on Dexalot." },
+            { step: 2, title: "Intent Sent to Gas Station Contract", desc: "The signed intent is submitted to the Gas Station smart contract deployed on Avalanche C-Chain. The contract locks the required user assets and prepares a cross-subnet execution request." },
+            { step: 3, title: "Cross-Subnet Message", desc: "A message is sent to the destination subnet through Avalanche Teleporter." },
+            { step: 4, title: "Relayer Executes Transaction", desc: "A relayer listens for intents and performs the transaction on the target subnet. The relayer pays the required gas and executes the application call." },
+            { step: 5, title: "Result Returned", desc: "The transaction result is finalized and the user receives the output tokens. Users successfully interacted with the subnet without holding its native gas token." }
+          ].map((s) => (
+            <div key={s.step} className="bg-[#0F172A] border border-white/5 rounded-2xl p-6 relative">
+              <div className="absolute -top-4 -left-4 w-10 h-10 bg-[#E84142] rounded-full flex items-center justify-center text-white font-bold text-xl border-4 border-[#0F172A]">
+                {s.step}
+              </div>
+              <h3 className="text-lg font-bold text-white mb-3 mt-2">{s.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Infrastructure Stack */}
+      <section id="architecture" className="max-w-5xl mx-auto scroll-mt-24">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-white mb-4">Infrastructure Architecture</h2>
+          <p className="text-slate-400 text-lg">Subnet Gas Station is designed as a modular infrastructure stack composed of three core components.</p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="bg-[#1E293B]/50 border border-white/10 rounded-2xl p-8">
+            <h3 className="text-xl font-bold text-white mb-4 text-[#E84142]">Gas Abstraction Protocol</h3>
+            <p className="text-slate-300 mb-4">Smart contracts responsible for handling transaction intents and managing gas abstraction.</p>
+            <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold mb-2">Functions include:</p>
+            <ul className="list-disc pl-5 space-y-1 text-slate-400 text-sm">
+              <li>receiving user intents</li>
+              <li>locking user assets</li>
+              <li>initiating cross-subnet execution</li>
+            </ul>
+          </div>
+          <div className="bg-[#1E293B]/50 border border-white/10 rounded-2xl p-8">
+            <h3 className="text-xl font-bold text-white mb-4 text-amber-400">Relayer Execution Network</h3>
+            <p className="text-slate-300 mb-4">Relayers monitor new intents and execute transactions on the destination subnet.</p>
+            <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold mb-2">Responsibilities include:</p>
+            <ul className="list-disc pl-5 space-y-1 text-slate-400 text-sm">
+              <li>monitoring intents</li>
+              <li>paying subnet gas fees</li>
+              <li>executing transactions</li>
+              <li>returning results</li>
+            </ul>
+          </div>
+          <div className="bg-[#1E293B]/50 border border-white/10 rounded-2xl p-8">
+            <h3 className="text-xl font-bold text-white mb-4 text-blue-400">Cross-Subnet Messaging</h3>
+            <p className="text-slate-300 mb-4">Cross-subnet communication is powered by Avalanche Teleporter.</p>
+            <p className="text-slate-400 text-sm">Teleporter enables secure and efficient message passing between Avalanche subnets.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Developer Integration */}
+      <section className="max-w-4xl mx-auto bg-[#0F172A] border border-white/10 rounded-3xl p-8 md:p-12">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold text-white mb-4">Build with Subnet Gas Station</h2>
+          <p className="text-slate-300 text-lg">Subnet Gas Station is designed as both an infrastructure protocol and a developer platform. Developers can integrate gas abstraction directly into their applications.</p>
+        </div>
+        
+        <h3 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-2">Integration Options</h3>
+        
+        <div className="space-y-8">
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-2">Smart Contract Integration</h4>
+            <p className="text-slate-400">Applications can call the Gas Station smart contract to execute transactions on other subnets.</p>
+          </div>
+          
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-2">Frontend SDK</h4>
+            <p className="text-slate-400 mb-4">Frontend applications can submit intents directly through a lightweight SDK.</p>
+            <div className="bg-[#1E293B] rounded-xl p-4 font-mono text-sm text-emerald-400 border border-white/5 overflow-x-auto">
+<pre>{`gasStation.submitIntent({
+  targetApp: "dexalot",
+  action: "swap",
+  tokenIn: "USDC",
+  amount: 10
+})`}</pre>
+            </div>
+            <p className="text-slate-400 mt-4">This allows developers to integrate gas abstraction with minimal changes to their application.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Vision Section */}
+      <section className="max-w-3xl mx-auto text-center space-y-6">
+        <h2 className="text-3xl font-bold text-white">Toward a Gasless Subnet Ecosystem</h2>
+        <p className="text-slate-300 text-lg leading-relaxed">
+          Subnet Gas Station aims to transform Avalanche subnets into a gas-abstracted application ecosystem.
+        </p>
+        <p className="text-slate-400 leading-relaxed">
+          Users should be able to explore and interact with applications without managing multiple gas tokens across networks. By removing gas friction, we make the Avalanche ecosystem more accessible to both users and developers.
+        </p>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 pt-8 pb-4 text-center space-y-2">
+        <p className="text-slate-500 font-medium">Built on Avalanche</p>
+        <p className="text-slate-600 text-sm">Powered by Teleporter cross-subnet messaging</p>
+        <p className="text-slate-600 text-sm">Demo integration with Dexalot</p>
+      </footer>
     </div>
   );
 }
