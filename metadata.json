@@ -1,0 +1,5 @@
+{
+  "name": "Subnet Gas Station Portal",
+  "description": "Avalanche Subnet gas abstraction demo where users can pay gas using USDC.",
+  "requestFramePermissions": []
+}
